@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unlock & Match! (10 Levels)</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap');
+
+        :root {
+            --bg-gradient: linear-gradient(135deg, #89f7fe, #66a6ff); /* Cool Blue gradient */
+            --container-bg: rgba(255, 255, 255, 0.97); /* Slightly more opaque */
+            --primary-color: #ff6b6b; /* Coral Red */
+            --secondary-color: #4ecdc4; /* Turquoise */
+            --item-bg: #f7fff7; /* Very light green */
+            --item-border: #90ee90; /* Light Green */
+            --locked-color: #a0a0a0;
+            --locked-bg: #e0e0e0;
+            --celebrate-color1: #fca103; /* Orange */
+            --celebrate-color2: #e91e63; /* Pink */
+            --celebrate-color3: #4caf50; /* Green */
+            --celebrate-color4: #2196f3; /* Blue */
+        }
+
+        body {
+            font-family: 'Fredoka One', cursive;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: var(--bg-gradient);
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            overflow: hidden;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        #app-container {
+             width: 100%;
+             height: 100%;
+             display: flex;
+             justify-content: center;
+             align-items: center;
+             position: relative; /* Needed for celebration overlay */
+        }
+
+        .screen {
+            background-color: var(--container-bg);
+            padding: 20px; /* Reduced padding slightly */
+            border-radius: 25px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            text-align: center;
+            width: 95%;
+            max-width: 650px; /* Allow a bit wider for more levels */
+            border: 5px solid var(--primary-color);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            position: relative; /* Ensure screens stack correctly if needed */
+            z-index: 1; /* Below celebration */
+        }
+        .screen.active {
+            display: flex;
+        }
+
+        /* --- Level Select Screen Styles --- */
+        #level-select-screen h2 {
+             color: var(--secondary-color);
+             margin-bottom: 20px;
+             font-size: 1.8em;
+        }
+        #level-buttons-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); /* Adjust size for more buttons */
+            gap: 15px; /* Slightly reduced gap */
+            width: 100%;
+            max-width: 550px;
+            padding: 10px;
+        }
+        .level-button {
+            padding: 15px 8px; /* Adjust padding */
+            font-size: 1.3em;
+            font-weight: bold;
+            font-family: 'Fredoka One', cursive;
+            color: white;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            line-height: 1.2;
+            aspect-ratio: 1 / 1; /* Make buttons square-ish */
+        }
+        .level-button:hover { transform: translateY(-3px); box-shadow: 0 7px 12px rgba(0,0,0,0.2); }
+        .level-button:active { transform: translateY(0px); box-shadow: 0 2px 4px rgba(0,0,0,0.15); }
+        .level-button.unlocked { background-color: var(--secondary-color); }
+        .level-button.unlocked:hover { background-color: #62e4d9; } /* Lighter turquoise */
+        .level-button.locked { background-color: var(--locked-bg); color: var(--locked-color); cursor: not-allowed; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1); }
+        .level-button.locked:hover { transform: none; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);}
+        .level-button.locked::after { content: '🔒'; font-size: 0.8em; margin-top: 5px; opacity: 0.7; }
+
+
+        /* --- Game Screen Styles --- */
+        #game-screen h1 {
+            color: #ffffff; background-color: var(--primary-color);
+            padding: 8px 12px; border-radius: 15px; margin-top: 0; margin-bottom: 5px;
+            display: inline-block; font-size: 1.5em; box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+         #level-display { font-size: 1.1em; color: var(--secondary-color); margin-bottom: 10px; font-weight: bold; }
+        .columns-container { display: flex; justify-content: space-around; align-items: flex-start; margin-top: 5px; position: relative; min-height: 280px; padding: 5px; width: 100%; }
+        .column { display: flex; flex-direction: column; gap: 10px; width: 45%; } /* Reduced gap */
+        .item {
+            background-color: var(--item-bg); border: 3px solid var(--item-border); /* Thinner border */
+            border-radius: 12px; padding: 8px 4px; font-size: 2em; /* Adjust size */
+            cursor: pointer; transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 3px 5px rgba(0,0,0,0.1); display: flex; justify-content: center; align-items: center;
+            min-height: 50px; position: relative; overflow: hidden;
+        }
+        .item:hover { transform: scale(1.08); box-shadow: 0 5px 10px rgba(0,0,0,0.15); }
+        .item.selected { background-color: #ADD8E6; border-color: #4682B4; transform: scale(1.05); }
+        .item.matched { background-color: #e0e0e0; border-color: #b0b0b0; cursor: default; opacity: 0.6; transform: scale(0.95); } /* Lighter matched */
+        .item.correct-match::after { content: '✨'; /* Different sparkle */ position: absolute; font-size: 1.5em; animation: sparkle 0.6s ease-out forwards; opacity: 0; }
+        @keyframes sparkle { 0% { transform: scale(0) rotate(0deg); opacity: 1; } 50% { transform: scale(1.5) rotate(180deg); opacity: 1; } 100% { transform: scale(0) rotate(360deg); opacity: 0; } }
+        .item.incorrect { background-color: #FFC0CB; border-color: #ff7a8a; animation: shake 0.4s; } /* Lighter incorrect */
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 50% { transform: translateX(6px); } 75% { transform: translateX(-6px); } }
+
+        #connector-lines { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; overflow: visible; }
+        #connector-lines line { stroke: #50c878; /* Emerald Green */ stroke-width: 4; stroke-linecap: round; filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.3)); }
+
+        #message { margin-top: 10px; font-size: 1.2em; font-weight: bold; color: #333; min-height: 30px; line-height: 1.3; }
+
+        .button-container { margin-top: 10px; min-height: 45px; display: flex; justify-content: center; gap: 10px; }
+        .game-button {
+            padding: 10px 20px; font-size: 0.9em; font-weight: bold; font-family: 'Fredoka One', cursive;
+            color: white; border: none; border-radius: 10px; cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease; box-shadow: 0 3px 5px rgba(0,0,0,0.15);
+        }
+        .game-button:hover { transform: translateY(-2px); box-shadow: 0 5px 8px rgba(0,0,0,0.2); }
+        .game-button:active { transform: translateY(0px); box-shadow: 0 2px 4px rgba(0,0,0,0.15); }
+        #back-button { background-color: #6c757d; }
+        #back-button:hover { background-color: #5a6268; }
+        #restart-level-button { background-color: var(--primary-color); }
+        #restart-level-button:hover { background-color: #f55151; } /* Lighter primary hover */
+
+        /* --- Celebration Styles --- */
+        #celebration-container {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            overflow: hidden;
+            pointer-events: none; /* Allow clicks through */
+            z-index: 10; /* Above other elements */
+            display: none; /* Hidden by default */
+        }
+        #celebration-container.active {
+            display: block;
+        }
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 20px;
+            background-color: var(--celebrate-color1); /* Default color */
+            top: -20px; /* Start above screen */
+            opacity: 0;
+            animation: confetti-fall 3s ease-out forwards;
+        }
+        /* Different colors and delays for variety */
+        .confetti:nth-child(5n + 1) { background-color: var(--celebrate-color1); animation-delay: 0s; }
+        .confetti:nth-child(5n + 2) { background-color: var(--celebrate-color2); animation-delay: 0.2s; width: 12px; height: 12px; border-radius: 50%;}
+        .confetti:nth-child(5n + 3) { background-color: var(--celebrate-color3); animation-delay: 0.4s; }
+        .confetti:nth-child(5n + 4) { background-color: var(--celebrate-color4); animation-delay: 0.6s; width: 15px; height: 15px;}
+        .confetti:nth-child(5n + 5) { background-color: var(--celebrate-color1); animation-delay: 0.8s; }
+
+        @keyframes confetti-fall {
+            0% { transform: translateY(0) rotateZ(0deg); opacity: 1; }
+            100% { transform: translateY(110vh) rotateZ(720deg); opacity: 0; }
+        }
+
+        /* Responsive Adjustments */
+        @media (max-width: 600px) {
+            .item { font-size: 1.8em; padding: 6px 3px; min-height: 45px; border-width: 2px; }
+            #game-screen h1 { font-size: 1.3em; }
+            #level-select-screen h2 { font-size: 1.5em; }
+            .level-button { font-size: 1.1em; padding: 12px 6px; }
+            #level-display { font-size: 1em; }
+            #message { font-size: 1em; }
+            .game-button { padding: 8px 15px; font-size: 0.8em; }
+            .columns-container { min-height: 260px; } /* Adjust as needed */
+             #level-buttons-container { gap: 10px; }
+        }
+         @media (max-width: 400px) {
+            .item { font-size: 1.6em; min-height: 40px;}
+            .columns-container { min-height: 240px; } /* Adjust as needed */
+            .level-button { font-size: 1em; padding: 10px 5px;}
+             #level-buttons-container { grid-template-columns: repeat(auto-fit, minmax(75px, 1fr)); gap: 8px; }
+             .confetti { width: 8px; height: 15px; }
+             .confetti:nth-child(5n + 2) { width: 10px; height: 10px; }
+             .confetti:nth-child(5n + 4) { width: 12px; height: 12px; }
+         }
+    </style>
+</head>
+<body>
+    <div id="app-container">
+
+        <!-- Level Selection Screen -->
+        <div id="level-select-screen" class="screen">
+            <h2>Select a Level</h2>
+            <div id="level-buttons-container"></div>
+             <p style="margin-top: 15px; font-size: 0.8em; color: #555;">Complete a level to unlock the next!</p>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="screen">
+            <h1 id="game-title">Match It Up!</h1>
+            <div id="level-display">Level X</div>
+            <div class="columns-container">
+                <svg id="connector-lines"></svg>
+                <div class="column" id="letters"></div>
+                <div class="column" id="pictures"></div>
+            </div>
+            <div id="message">Select a letter...</div>
+            <div class="button-container">
+                <button id="back-button" class="game-button">Back to Levels</button>
+                <button id="restart-level-button" class="game-button">Restart Level</button>
+            </div>
+        </div>
+
+        <!-- Celebration Overlay -->
+        <div id="celebration-container">
+            <!-- Confetti pieces will be added here by JS -->
+        </div>
+
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const appContainer = document.getElementById('app-container');
+        const levelSelectScreen = document.getElementById('level-select-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const levelButtonsContainer = document.getElementById('level-buttons-container');
+        const levelDisplay = document.getElementById('level-display');
+        const letterColumn = document.getElementById('letters');
+        const pictureColumn = document.getElementById('pictures');
+        const messageArea = document.getElementById('message');
+        const svgLines = document.getElementById('connector-lines');
+        const columnsContainer = document.querySelector('.columns-container');
+        const backButton = document.getElementById('back-button');
+        const restartLevelButton = document.getElementById('restart-level-button');
+        const celebrationContainer = document.getElementById('celebration-container');
+
+        // --- Audio Context ---
+        let audioCtx;
+        function initAudio() { /* ... same as before ... */
+            if (!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+        }
+        function playSound(type) { /* ... same as before ... */
+            if (!audioCtx) return;
+             const oscillator = audioCtx.createOscillator(); const gainNode = audioCtx.createGain();
+             oscillator.connect(gainNode); gainNode.connect(audioCtx.destination);
+             gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
+             switch(type) {
+                case 'click': oscillator.type = 'triangle'; oscillator.frequency.setValueAtTime(600, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1); oscillator.start(audioCtx.currentTime); oscillator.stop(audioCtx.currentTime + 0.1); break;
+                case 'correct': oscillator.type = 'sine'; oscillator.frequency.setValueAtTime(523.25, audioCtx.currentTime); gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime); oscillator.frequency.linearRampToValueAtTime(698.46, audioCtx.currentTime + 0.1); gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2); oscillator.start(audioCtx.currentTime); oscillator.stop(audioCtx.currentTime + 0.2); break;
+                case 'incorrect': oscillator.type = 'square'; oscillator.frequency.setValueAtTime(150, audioCtx.currentTime); gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime); oscillator.frequency.linearRampToValueAtTime(100, audioCtx.currentTime + 0.2); gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3); oscillator.start(audioCtx.currentTime); oscillator.stop(audioCtx.currentTime + 0.3); break;
+                case 'win': oscillator.type = 'triangle'; gainNode.gain.setValueAtTime(0.25, audioCtx.currentTime); oscillator.frequency.setValueAtTime(523.25, audioCtx.currentTime); oscillator.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.15); oscillator.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.3); oscillator.frequency.setValueAtTime(1046.50, audioCtx.currentTime + 0.45); gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.6); oscillator.start(audioCtx.currentTime); oscillator.stop(audioCtx.currentTime + 0.6); break; // Slightly longer win sound
+             }
+        }
+
+        // --- Game Data (10 Levels) ---
+        const levelConfigs = [
+            // 1 (3 pairs)
+            { pairs: [{ l: 'A', p: '🍎', id: 'apple' }, { l: 'B', p: '🎈', id: 'balloon' }, { l: 'C', p: '🐱', id: 'cat' }] },
+            // 2 (4 pairs)
+            { pairs: [{ l: 'D', p: '🦆', id: 'duck' }, { l: 'E', p: '🐘', id: 'elephant' }, { l: 'F', p: '🐟', id: 'fish' }, { l: 'G', p: '🍇', id: 'grapes' }] },
+            // 3 (5 pairs)
+            { pairs: [{ l: 'H', p: '🏠', id: 'house' }, { l: 'I', p: '🍦', id: 'icecream' }, { l: 'J', p: '🍓', id: 'jam' }, { l: 'K', p: '🔑', id: 'key' }, { l: 'L', p: '🍋', id: 'lemon' }] },
+            // 4 (6 pairs)
+            { pairs: [{ l: 'M', p: '🐒', id: 'monkey' }, { l: 'N', p: '👃', id: 'nose' }, { l: 'O', p: '🐙', id: 'octopus' }, { l: 'P', p: '🐷', id: 'pig' }, { l: 'Q', p: '👸', id: 'queen' }, { l: 'R', p: '💍', id: 'ring' }] },
+            // 5 (6 pairs)
+            { pairs: [{ l: 'S', p: '☀️', id: 'sun' }, { l: 'T', p: '🌳', id: 'tree' }, { l: 'U', p: '☂️', id: 'umbrella' }, { l: 'V', p: '🎻', id: 'violin' }, { l: 'W', p: '🍉', id: 'watermelon' }, { l: 'X', p: ' xylophone', id: 'xylophone' }] }, // X uses text for clarity
+            // 6 (6 pairs)
+            { pairs: [{ l: 'Y', p: '🧶', id: 'yarn' }, { l: 'Z', p: '🦓', id: 'zebra' }, { l: '🚗', p: 'C', id: 'car' }, { l: '⭐️', p: 'S', id: 'star' }, { l: '⚽️', p: 'B', id: 'ball' }, { l: '⏰', p: 'T', id: 'time' }] }, // Switched: Picture -> Letter
+            // 7 (7 pairs)
+            { pairs: [{ l: '🐶', p: 'D', id: 'dog' }, { l: '🐰', p: 'R', id: 'rabbit' }, { l: '🦊', p: 'F', id: 'fox' }, { l: '🐻', p: 'B', id: 'bear' }, { l: '🐼', p: 'P', id: 'panda' }, { l: '🐨', p: 'K', id: 'koala' }, { l: '🐯', p: 'T', id: 'tiger' }] }, // Picture -> Letter
+            // 8 (7 pairs)
+            { pairs: [{ l: '🍎', p: 'A', id: 'apple2'}, { l: '🍌', p: 'B', id: 'banana'}, { l: '🍓', p: 'S', id: 'strawberry'}, { l: '🍇', p: 'G', id: 'grapes2'}, { l: '🍊', p: 'O', id: 'orange'}, { l: '🥝', p: 'K', id: 'kiwi'}, { l: '🍍', p: 'P', id: 'pineapple'}] }, // Picture -> Letter (Fruits)
+            // 9 (8 pairs)
+            { pairs: [{ l: 'Aa', p: 'Ant 🐜', id: 'ant' }, { l: 'Bb', p: 'Bee 🐝', id: 'bee' }, { l: 'Cc', p: 'Cow 🐄', id: 'cow' }, { l: 'Dd', p: 'Dog 🐶', id: 'dog2' }, { l: 'Ee', p: 'Egg 🥚', id: 'egg' }, { l: 'Ff', p: 'Frog 🐸', id: 'frog' }, { l: 'Gg', p: 'Goat 🐐', id: 'goat' }, { l: 'Hh', p: 'Hat 👒', id: 'hat' }] }, // Upper/Lower case + Word
+            // 10 (8 pairs)
+            { pairs: [{ l: 'Ii', p: 'Ink 🖋️', id: 'ink' }, { l: 'Jj', p: 'Jug 🏺', id: 'jug' }, { l: 'Kk', p: 'Kite 🪁', id: 'kite' }, { l: 'Ll', p: 'Lamp 💡', id: 'lamp' }, { l: 'Mm', p: 'Moon 🌙', id: 'moon' }, { l: 'Nn', p: 'Net 🕸️', id: 'net' }, { l: 'Oo', p: 'Owl 🦉', id: 'owl' }, { l: 'Pp', p: 'Pen 🖊️', id: 'pen' }] } // Upper/Lower case + Word
+        ].map(level => ({ // Standardize 'letter' and 'picture' keys
+            pairs: level.pairs.map(pair => ({
+                letter: pair.l !== undefined ? pair.l : pair.p,
+                picture: pair.p !== undefined ? pair.p : pair.l,
+                id: pair.id
+            }))
+        }));
+
+
+        const localStorageKey = 'letterMatchUnlockedLevel_v2'; // Use new key if data structure changed
+        let currentLevelIndex = -1;
+        let selectedItem = null;
+        let matchedCount = 0;
+        let gameLocked = false;
+        let pairsInCurrentLevel = [];
+        const celebrationDuration = 3000; // ms (match CSS animation)
+        const confettiCount = 50; // Number of confetti pieces
+
+        // --- State Management ---
+        function getHighestUnlockedLevel() { /* ... same as before ... */
+            const savedLevel = localStorage.getItem(localStorageKey);
+            return savedLevel ? parseInt(savedLevel, 10) : 1;
+        }
+        function unlockLevel(levelNumber) { /* ... same as before ... */
+            const currentMax = getHighestUnlockedLevel();
+            if (levelNumber > currentMax) { localStorage.setItem(localStorageKey, levelNumber.toString()); }
+        }
+
+        // --- View Management ---
+        function showScreen(screenToShow) { /* ... same as before ... */
+             levelSelectScreen.classList.remove('active'); gameScreen.classList.remove('active');
+             screenToShow.classList.add('active');
+        }
+        function renderLevelSelectScreen() { /* ... same as before ... */
+             const highestUnlocked = getHighestUnlockedLevel();
+             levelButtonsContainer.innerHTML = '';
+             levelConfigs.forEach((config, index) => {
+                 const levelNum = index + 1; const button = document.createElement('button');
+                 button.classList.add('level-button'); button.textContent = `${levelNum}`; button.dataset.levelIndex = index;
+                 if (levelNum <= highestUnlocked) {
+                     button.classList.add('unlocked');
+                     button.addEventListener('click', () => { initAudio(); playSound('click'); startGame(index); });
+                 } else { button.classList.add('locked'); }
+                 levelButtonsContainer.appendChild(button);
+             });
+        }
+
+        // --- Celebration ---
+        function triggerCelebration() {
+            celebrationContainer.innerHTML = ''; // Clear old confetti
+            for (let i = 0; i < confettiCount; i++) {
+                const confetti = document.createElement('div');
+                confetti.classList.add('confetti');
+                confetti.style.left = `${Math.random() * 100}vw`; // Random horizontal start
+                confetti.style.animationDelay = `${Math.random() * 0.5}s`; // Slight random delay variation
+                celebrationContainer.appendChild(confetti);
+            }
+            celebrationContainer.classList.add('active');
+
+            // Remove celebration after animation finishes
+            setTimeout(() => {
+                celebrationContainer.classList.remove('active');
+                celebrationContainer.innerHTML = '';
+            }, celebrationDuration);
+        }
+
+        // --- Game Logic Helpers ---
+        function shuffleArray(array) { /* ... same as before ... */
+            for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; }
+        }
+        function getElementCenter(element) { /* ... same as before ... */
+            const rect = element.getBoundingClientRect(); const containerRect = columnsContainer.getBoundingClientRect();
+            const x = rect.left + rect.width / 2 - containerRect.left; const y = rect.top + rect.height / 2 - containerRect.top;
+            return { x, y };
+        }
+        function drawLine(elem1, elem2) { /* ... same as before ... */
+            const pos1 = getElementCenter(elem1); const pos2 = getElementCenter(elem2);
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('x1', pos1.x); line.setAttribute('y1', pos1.y); line.setAttribute('x2', pos2.x); line.setAttribute('y2', pos2.y);
+            svgLines.appendChild(line);
+        }
+        function createItemElement(itemData, type) { /* ... same as before (using standardized keys) ... */
+             const div = document.createElement('div'); div.classList.add('item');
+             div.dataset.id = itemData.id; div.dataset.type = type;
+             // Adjust font size slightly for longer text items (e.g., 'Ant 🐜')
+             const content = (type === 'letter') ? itemData.letter : itemData.picture;
+             div.textContent = content;
+             if(content && content.length > 3) { // Heuristic for longer items
+                 div.style.fontSize = "1.5em"; // Make font smaller for words
+             } else if (content && content.length > 1) { // Slightly smaller for Aa, Bb etc.
+                 div.style.fontSize = "1.8em";
+             }
+             div.addEventListener('click', handleItemClick);
+             return div;
+        }
+
+        // --- Core Game Functions ---
+        function loadLevelData(levelIndex) { /* ... same as before (using standardized keys) ... */
+            if (levelIndex < 0 || levelIndex >= levelConfigs.length) return false;
+            currentLevelIndex = levelIndex; pairsInCurrentLevel = levelConfigs[currentLevelIndex].pairs;
+            selectedItem = null; matchedCount = 0; gameLocked = false;
+            letterColumn.innerHTML = ''; pictureColumn.innerHTML = ''; svgLines.innerHTML = '';
+            messageArea.textContent = 'Select first item...'; messageArea.style.color = '#333';
+            levelDisplay.textContent = `Level ${currentLevelIndex + 1}`;
+            const shuffledLetters = [...pairsInCurrentLevel]; const shuffledPictures = [...pairsInCurrentLevel];
+            shuffleArray(shuffledLetters); shuffleArray(shuffledPictures);
+            shuffledLetters.forEach(pair => letterColumn.appendChild(createItemElement(pair, 'letter')));
+            shuffledPictures.forEach(pair => pictureColumn.appendChild(createItemElement(pair, 'picture')));
+            return true;
+        }
+        function startGame(levelIndex) { /* ... same as before ... */
+             if (loadLevelData(levelIndex)) { showScreen(gameScreen); }
+             else { showScreen(levelSelectScreen); }
+        }
+
+        function handleItemClick(event) {
+            initAudio(); playSound('click');
+            if (gameLocked) return;
+            const clickedElement = event.target.closest('.item'); // Ensure we get the item div
+            if (!clickedElement || clickedElement.classList.contains('matched')) return;
+
+            // --- Selection Logic ---
+            if (!selectedItem) {
+                 selectedItem = clickedElement; selectedItem.classList.add('selected');
+                 messageArea.textContent = `Selected. Find the match!`;
+            } else {
+                 if (selectedItem === clickedElement) { selectedItem.classList.remove('selected'); selectedItem = null; messageArea.textContent = 'Select first item...'; return; }
+                 if (selectedItem.dataset.type === clickedElement.dataset.type) { messageArea.textContent = 'Pick one of each type!'; selectedItem.classList.remove('selected'); selectedItem = null; return; }
+
+                 // --- Check Match Logic ---
+                 gameLocked = true;
+                 if (selectedItem.dataset.id === clickedElement.dataset.id) {
+                     // --- Correct Match ---
+                     playSound('correct');
+                     selectedItem.classList.remove('selected'); selectedItem.classList.add('matched', 'correct-match');
+                     clickedElement.classList.add('matched', 'correct-match');
+                     drawLine(selectedItem, clickedElement); matchedCount++;
+                     messageArea.textContent = 'Match! ✨'; messageArea.style.color = '#2E8B57';
+                     selectedItem.removeEventListener('click', handleItemClick); clickedElement.removeEventListener('click', handleItemClick);
+                     setTimeout(() => document.querySelectorAll('.correct-match').forEach(el => el.classList.remove('correct-match')), 600);
+                     selectedItem = null;
+
+                     // --- Level Completion Check ---
+                     if (matchedCount === pairsInCurrentLevel.length) {
+                         playSound('win');
+                         const nextLevelNum = currentLevelIndex + 2;
+                         if (nextLevelNum <= levelConfigs.length) { unlockLevel(nextLevelNum); }
+
+                         // Show celebration FIRST
+                         triggerCelebration();
+
+                         // Update message during celebration
+                         if (currentLevelIndex < levelConfigs.length - 1) {
+                             messageArea.textContent = `Level ${currentLevelIndex + 1} Complete! 🎉`;
+                             messageArea.style.color = 'blue';
+                         } else {
+                             messageArea.textContent = 'You finished all levels! 🥳🏆 Bravo!';
+                             messageArea.style.color = '#FF4500';
+                         }
+
+                         // Return to level select AFTER celebration
+                         setTimeout(() => {
+                            renderLevelSelectScreen();
+                            showScreen(levelSelectScreen);
+                            gameLocked = false; // Unlock game after transition
+                         }, celebrationDuration + 500); // Wait for confetti + small buffer
+
+                     } else {
+                         // Not finished level, unlock game after delay
+                         setTimeout(() => { gameLocked = false; messageArea.textContent = 'Select first item...'; messageArea.style.color = '#333'; }, 700);
+                     }
+
+                 } else {
+                     // --- Incorrect Match ---
+                     playSound('incorrect'); messageArea.textContent = 'Not a match 🤔'; messageArea.style.color = '#DC143C';
+                     selectedItem.classList.add('incorrect'); clickedElement.classList.add('incorrect');
+                     setTimeout(() => {
+                         selectedItem?.classList.remove('selected', 'incorrect'); clickedElement.classList.remove('incorrect');
+                         selectedItem = null; messageArea.textContent = 'Select first item...'; messageArea.style.color = '#333';
+                         gameLocked = false;
+                     }, 800);
+                 }
+            }
+        }
+
+        // --- Event Listeners ---
+        backButton.addEventListener('click', () => { /* ... same as before ... */
+             initAudio(); playSound('click'); renderLevelSelectScreen(); showScreen(levelSelectScreen);
+        });
+        restartLevelButton.addEventListener('click', () => { /* ... same as before ... */
+             initAudio(); playSound('click');
+             if (currentLevelIndex !== -1) { loadLevelData(currentLevelIndex); }
+             else { renderLevelSelectScreen(); showScreen(levelSelectScreen); }
+        });
+
+        // --- Initial Setup ---
+        document.addEventListener('DOMContentLoaded', () => { /* ... same as before ... */
+             renderLevelSelectScreen(); showScreen(levelSelectScreen);
+             document.body.addEventListener('click', initAudio, { once: true });
+             document.body.addEventListener('touchstart', initAudio, { once: true });
+        });
+
+    </script>
+</body>
+</html>
